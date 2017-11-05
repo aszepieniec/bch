@@ -43,16 +43,6 @@ class BCH:
 
         return coeffs
 
-    def Reduce( self, L ):
-        while True:
-            quo = L[1,0] // L[0,0]
-            if quo != 0:
-                L[1,:] = L[1,:] - quo * L[0,:]
-            elif max(L[1,0].degree(), L[1,1].degree()) < max(L[0,0].degree(), L[0,1].degree()):
-                L = matrix([[0, 1], [1, 0]]) * L
-            else:
-                return L
-
     def InterruptedEuclid( self, S, g ):
         t1 = self.Ex(1)
         t2 = self.Ex(0)
@@ -93,7 +83,7 @@ class BCH:
         for i in range(0,len(syndrome)):
             s += syndrome[i] * self.X^(i)
 
-        g = self.X^(self.delta-1)
+        g = self.X^(self.delta)
 
         # get sigma and omega
         # ... from interrupted Euclid

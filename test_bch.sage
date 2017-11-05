@@ -1,6 +1,6 @@
 load("bch.sage")
 
-m = 8
+m = 12
 delta = 45
 bch = BCH(m, delta)
 msg = [bch.F.random_element() for i in range(0,bch.k)]
@@ -11,7 +11,7 @@ print "codeword:", cdwd
 rcvd = copy(cdwd)
 
 errors = [bch.F(0) for i in range(0, bch.n)]
-num_errors = (delta-1)//4
+num_errors = (delta-1)//2
 error_locations = []
 for i in range(0, num_errors):
     index = ZZ(Integers(len(rcvd)).random_element())
@@ -42,6 +42,7 @@ print "decoded:", msg_
 
 if msg == msg_:
     print "success!"
+    print "corrected", num_errors, "errors in code of dimension", bch.k, "and length", bch.n
 else:
     print "failure!"
 
