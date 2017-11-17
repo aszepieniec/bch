@@ -146,10 +146,10 @@ int gf2x_multiply( gf2x* dest, gf2x lhs, gf2x rhs )
     unsigned char * data;
     gf2x temp, shifted;
 
-    if( rhs.degree > GF2X_KARATSUBA_CUTOFF && lhs.degree > GF2X_KARATSUBA_CUTOFF )
-    {
-        return gf2x_karatsuba(dest, lhs, rhs);
-    }
+    //if( rhs.degree > GF2X_KARATSUBA_CUTOFF && lhs.degree > GF2X_KARATSUBA_CUTOFF )
+    //{
+    //    return gf2x_karatsuba(dest, lhs, rhs);
+    //}
 
     if( rhs.degree < lhs.degree )
     {
@@ -553,6 +553,23 @@ int gf2x_divide( gf2x* quo, gf2x* rem, gf2x num, gf2x divisor )
     gf2x_destroy(temp);
 
     return 1;
+}
+
+/**
+ * gf2x_divides
+ * Determine if a given polynomial divides another.
+ */
+int gf2x_divides( gf2x divisor, gf2x numerator )
+{
+    int divides;
+    gf2x quo, rem;
+    quo = gf2x_init(0);
+    rem = gf2x_init(0);
+    gf2x_divide(&quo, &rem, numerator, divisor);
+    divides = gf2x_is_zero(rem);
+    gf2x_destroy(quo);
+    gf2x_destroy(rem);
+    return divides;
 }
 
 /**

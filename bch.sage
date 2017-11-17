@@ -1,16 +1,27 @@
 class BCH:
-    def __init__( self, m, delta ):
+    def __init__( self, m, delta, n ):
         self.delta = delta
         p = 2
         self.m = m
-        self.n = p^m - 1
-        self.E = FiniteField(p^m, "z")
+        self.n = n
+
+        if m == 16:
+            IF = FiniteField(256, "a")
+            a = IF.gen()
+            IFZ = PolynomialRing(IF, "Z")
+            Z = IFZ.gen()
+            modulus = a^5+a^3+a^2+1 + Z + Z^2
+            self.E = QuotientRing(IFZ, modulus)
+            self.z = self.E.gen()
+        else:
+            self.E = FiniteField(p^m, "z")
+            self.z = self.E.gen()
         self.Ex = PolynomialRing(self.E, "X")
         self.X = self.Ex.gen()
-        self.z = self.E.gen()
-        self.F = self.E.modulus().parent().base_ring()
+        self.F = FiniteField(2)
         self.Fx = PolynomialRing(self.F, "x")
         self.x = self.Fx.gen()
+
 
         # get compatible polynomial ring
         self.Ex = PolynomialRing(self.E, "x")
@@ -18,11 +29,70 @@ class BCH:
 
         # get generator
         self.generator = self.Fx(1)
+        minpolys = []
         for i in range(1,delta):
-            self.generator = lcm(self.generator, (self.z^i).minpoly())
+            temp = self.z^i
+            minpoly = self.MinPoly(self.z^i)
+            self.generator = lcm(self.generator, minpoly)
+            minpolys.append(minpoly)
+
+        # collapse list
+        listsize = len(minpolys)
+        while listsize != 1:
+            j = 0
+            i = 0
+            while i < listsize - 1:
+                minpolys[j] = lcm(minpolys[i], minpolys[i+1])
+                i = i + 2
+                j = j + 1
+            if i == listsize - 1:
+                minpolys[j] = minpolys[i]
+                j = j + 1
+            listsize = j
+
+        #print "list[0] =", ''.join(str(c) for c in minpolys[0].coefficients(sparse=False))
 
         self.k = self.n - self.generator.degree()
         self.t = floor((delta-1)/2)
+
+    def Coefficients( self, elm ):
+        if self.m != 16:
+            coeffs = elm.coefficients(sparse=False)
+            while len(coeffs) != self.m:
+                coeffs.append(0)
+            return coeffs
+
+        coeffs = elm.lift().coefficients(sparse=False)
+        clist = [0] * 16
+        for i in range(0, len(coeffs)):
+            ccoeffs = coeffs[i].polynomial().coefficients(sparse=False)
+            for j in range(0, len(ccoeffs)):
+                clist[i*8+j] = ccoeffs[j]
+        return clist
+
+    def MinPoly( self, elm, verbose=False ):
+        if self.m != 16:
+            return elm.minpoly()
+
+        mat = copy(MatrixSpace(self.F, 16, 17).zero())
+        acc = elm.parent()(1)
+        for i in range(0, 17):
+            mat[:,i] = matrix(self.Coefficients(acc)).transpose()
+            acc = acc * elm
+
+        if verbose == True:
+            print "matrix:"
+            print mat
+
+        K = mat.right_kernel().matrix()
+        K = K[:, ::-1].echelon_form()
+        K = K[:, ::-1]
+
+        poly = self.Fx(0)
+        for i in range(0, K.ncols()):
+            poly += K[K.nrows()-1, i] * self.x^i
+
+        return poly
 
     def Encode( self, msg ):
         if len(msg) > self.k:
@@ -95,7 +165,7 @@ class BCH:
         #    sigma_deriv += sigma.coefficients(sparse=False)[i] * i * self.X^(i-1)
 
         # correct errors
-        errors = [self.E(0)] * self.n
+        errors = [self.F(0)] * self.n
         num_errors = 0
         for i in range(0, self.n):
             if sigma(self.z^(-i)) == 0:

@@ -3,14 +3,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-int test_generator( csprng * rng )
+int test_generator( unsigned char * random )
 {
     bch codec;
+    csprng rng;
+
+    csprng_init(&rng);
+    csprng_seed(&rng, 8, random);
 
     int n, delta;
 
-    delta = 10 + (csprng_generate_ulong(rng) % 1000);
-    n = 16*delta + 10 + (csprng_generate_ulong(rng) % 100);
+    delta = 10 + (csprng_generate_ulong(&rng) % 1000);
+    n = 16*delta + 10 + (csprng_generate_ulong(&rng) % 100);
 
     printf("testing bch codec generation with n = %i and delta = %i ... ", n, delta);
 
@@ -18,7 +22,7 @@ int test_generator( csprng * rng )
 
     if( codec.k > 0 )
     {
-        printf("success, with generator = "); gf2x_print(codec.generator); printf(" and k = %i.\n", codec.k);
+        printf("success, with generator = "); gf2x_print(codec.generator); printf(" and k = %i\n", codec.k);
     }
     else
     {
@@ -31,6 +35,173 @@ int test_generator( csprng * rng )
 
 }
 
+int test_encode( unsigned char * random )
+{
+    bch codec;
+
+    int n, delta, k;
+    unsigned char * msg;
+    unsigned char * cdwd;
+    unsigned char * msg_;
+    int equals;
+    int i;
+    csprng rng;
+
+    csprng_init(&rng);
+    csprng_seed(&rng, 8, random);
+
+    delta = 10 + (csprng_generate_ulong(&rng) % 100);
+    n = 16*delta + 10 + (csprng_generate_ulong(&rng) % 100);
+
+
+    codec = bch_init(n, delta);
+    k = codec.k;
+    printf("testing bch encoding with n = %i and delta = %i and consequently k = %i ... ", n, delta, k);
+
+    msg = malloc((k+1+7)/8);
+    for( i = 0 ; i < (k+1+7)/8 ; ++i )
+    {
+        msg[i] = 0;
+    }
+    for( i = 0 ; i < k ; ++i )
+    {
+        msg[i/8] ^= (csprng_generate_ulong(&rng)%2) << (i % 8);
+    }
+
+    cdwd = malloc((n+1+8)/8);
+    bch_encode(cdwd, codec, msg);
+
+    printf("message ");
+    for( i = 0 ; i < k ; ++i )
+    {
+        printf("%i", (msg[i/8] & (1 << (i%8))) != 0);
+    }
+    printf(" encoded as ");
+    for( i = 0 ; i < n ; ++i )
+    {
+        printf("%i", (cdwd[i/8] & (1 << (i % 8))) != 0);
+    }
+
+    msg_ = malloc((k+1+7)/8);
+    equals = bch_decode_error_free(msg_, codec, cdwd);
+    printf(" decoded as ");
+    for( i = 0 ; i < (k+1+7)/8 ; ++i )
+    {
+        equals &= (msg[i] == msg_[i]);
+    }
+    for( i = 0 ; i < k ; ++i )
+    {
+        printf("%i", (msg_[i/8] & (1 << (i%8))) != 0);
+    }
+    if( equals == 1 )
+    {
+        printf(" success! \\o/\n");
+    }
+    else
+    {
+        printf(" failure! <o>\n");
+    }
+
+
+    free(msg);
+    free(msg_);
+    free(cdwd);
+    bch_destroy(codec);
+
+    return equals;
+}
+
+int test_correction( unsigned char * random )
+{
+    bch codec;
+
+    int n, delta, k, num_errors, pos;
+    unsigned char * msg;
+    unsigned char * cdwd;
+    unsigned char * msg_;
+    int equals;
+    int i;
+    csprng rng;
+
+    csprng_init(&rng);
+    csprng_seed(&rng, 8, random);
+
+    //for( i = 0 ; i < 8 ; ++i )
+    //{
+    //    printf("%02x", random[i]);
+    //}
+    //printf("\n");
+
+    delta = 10 + (csprng_generate_ulong(&rng) % 20);
+    n = 16*delta + 10 + (csprng_generate_ulong(&rng) % 50);
+    num_errors = (csprng_generate_ulong(&rng) % (1+(delta-1)/2));
+
+
+    codec = bch_init(n, delta);
+    k = codec.k;
+    printf("testing bch error correction with n = %i and delta = %i and consequently k = %i and with (but not consequently) number of errors %i ... ", n, delta, k, num_errors);
+
+    msg = malloc((k+1+7)/8);
+    for( i = 0 ; i < (k+1+7)/8 ; ++i )
+    {
+        msg[i] = 0;
+    }
+    for( i = 0 ; i < k ; ++i )
+    {
+        msg[i/8] ^= (csprng_generate_ulong(&rng)%2) << (i % 8);
+    }
+
+    cdwd = malloc((n+1+8)/8);
+    bch_encode(cdwd, codec, msg);
+
+    printf("message ");
+    for( i = 0 ; i < k ; ++i )
+    {
+        printf("%i", (msg[i/8] & (1 << (i%8))) != 0);
+    }
+    printf(" encoded as ");
+    for( i = 0 ; i < n ; ++i )
+    {
+        printf("%i", (cdwd[i/8] & (1 << (i % 8))) != 0);
+    }
+
+    printf(" adding errors in positions ");
+    for( i = 0 ; i < num_errors ; ++i )
+    {
+        pos = csprng_generate_ulong(&rng) % n;
+        printf(" %i ", pos);
+        cdwd[pos/8] ^= 1 << (pos % 8);
+    }
+
+    msg_ = malloc((k+1+7)/8);
+    equals = bch_decode(msg_, codec, cdwd);
+    printf("decoded as ");
+    for( i = 0 ; i < (k+1+7)/8 ; ++i )
+    {
+        equals &= (msg[i] == msg_[i]);
+    }
+    for( i = 0 ; i < k ; ++i )
+    {
+        printf("%i", (msg_[i/8] & (1 << (i%8))) != 0);
+    }
+    if( equals == 1 )
+    {
+        printf(" success! \\o/\n");
+    }
+    else
+    {
+        printf(" failure! <o>\n");
+    }
+
+
+    free(msg);
+    free(msg_);
+    free(cdwd);
+    bch_destroy(codec);
+
+    return equals;
+}
+
 int main( int argc, char ** argv )
 {
 
@@ -38,16 +209,34 @@ int main( int argc, char ** argv )
     int i;
     int success;
     csprng rng;
+    unsigned char rr[4];
+    unsigned char seed[8];
 
-    random = 42;
-
-    printf("Running series of tests with randomness %u ...\n", random);
+    random = 0xdeadbeef;
+    random = 0xefbeadde;
 
     csprng_init(&rng);
-    csprng_seed(&rng, sizeof(unsigned int), (unsigned char*)(&random));
+    csprng_seed(&rng, 4, (unsigned char*)(&random));
+    
+    csprng_generate(&rng, 4, rr);
+    printf("Running series of tests with randomness %02x%02x%02x%02x ...\n", rr[0], rr[1], rr[2], rr[3]);
 
     success = 1;
-    for( i = 0 ; i < 1 ; ++i ) success &= test_generator(&rng);
+    for( i = 0 ; i < 0 ; ++i )
+    {
+        csprng_generate(&rng, 8, seed);
+        success &= test_generator(seed);
+    }
+    for( i = 0 ; i < 0 ; ++i )
+    {
+        csprng_generate(&rng, 8, seed);
+        success &= test_encode(seed);
+    }
+    for( i = 0 ; i < 1 ; ++i )
+    {
+        csprng_generate(&rng, 8, seed);
+        success &= test_correction(seed);
+    }
 
     if( success == 1 )
     {
