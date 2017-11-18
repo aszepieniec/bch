@@ -146,10 +146,10 @@ int gf2x_multiply( gf2x* dest, gf2x lhs, gf2x rhs )
     unsigned char * data;
     gf2x temp, shifted;
 
-    //if( rhs.degree > GF2X_KARATSUBA_CUTOFF && lhs.degree > GF2X_KARATSUBA_CUTOFF )
-    //{
-    //    return gf2x_karatsuba(dest, lhs, rhs);
-    //}
+    if( rhs.degree > GF2X_KARATSUBA_CUTOFF && lhs.degree > GF2X_KARATSUBA_CUTOFF )
+    {
+        return gf2x_karatsuba(dest, lhs, rhs);
+    }
 
     if( rhs.degree < lhs.degree )
     {
@@ -264,13 +264,15 @@ int gf2x_karatsuba( gf2x* dest, gf2x lhs, gf2x rhs )
     z2 = gf2x_init(0);
     lolo = gf2x_init(0);
     hihi = gf2x_init(0);
-    gf2x_add(&lolo, left_lo, right_lo);
-    gf2x_add(&hihi, left_hi, right_hi);
-    gf2x_karatsuba(&z2, left_lo, right_lo);
+    gf2x_add(&lolo, left_lo, left_hi);
+    gf2x_add(&hihi, right_hi, right_lo);
+    gf2x_karatsuba(&z2, lolo, hihi);
     z3 = gf2x_init(0);
     gf2x_karatsuba(&z3, left_hi, right_hi);
 
     /* recombine */
+    gf2x_add(&z2, z2, z1);
+    gf2x_add(&z2, z2, z3);
     gf2x_shift_left(&hihi, z3, 2*cut+2);
     gf2x_shift_left(&lolo, z2, cut+1);
     gf2x_add(dest, z1, lolo);
