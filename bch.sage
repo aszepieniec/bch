@@ -50,8 +50,6 @@ class BCH:
                 j = j + 1
             listsize = j
 
-        #print "list[0] =", ''.join(str(c) for c in minpolys[0].coefficients(sparse=False))
-
         self.k = self.n - self.generator.degree()
         self.t = floor((delta-1)/2)
 
@@ -114,14 +112,26 @@ class BCH:
         return coeffs
 
     def InterruptedEuclid( self, S, g ):
+        #print "inside interrupted euclidean procedure ..."
         t1 = self.Ex(1)
         t2 = self.Ex(0)
+        #print "S:", self.gf65536x2str(S)
+        #print "g:", self.gf65536x2str(g)
         r1 = g
         r2 = S
         s1 = self.Ex(0)
         s2 = self.Ex(1)
         while r2.degree() >= t2.degree():
+            #print "r1:", self.gf65536x2str(r1)
+            #print "r2:", self.gf65536x2str(r2)
+            #print "t1:", self.gf65536x2str(t1)
+            #print "t2:", self.gf65536x2str(t2)
+            #print "s1:", self.gf65536x2str(s1)
+            #print "s2:", self.gf65536x2str(s2)
             quo = r1 // r2
+            #print "quotient:", self.gf65536x2str(quo)
+            #print "remainder:", self.gf65536x2str(r1 - r2*quo)
+            #sys.stdin.read(1)
             
             temp = t1
             t1 = t2
@@ -144,8 +154,6 @@ class BCH:
             zi = self.z^(i)
             for j in range(0,min(self.n,len(word))):
                 ev += self.E(word[j]) * zi^j
-            if i < 10:
-                print ''.join(str(c) for c in self.Coefficients(ev))
             s[i-1] = ev
 
         return s
@@ -171,9 +179,8 @@ class BCH:
         num_errors = 0
         for i in range(0, self.n):
             if sigma(self.z^(-i)) == 0:
-                print "found error in position", i
                 errors[i] = self.F(1)
-            #    errors[i] = omega(self.z^-i)/ sigma_deriv(self.z^-i)a
+            #    errors[i] = omega(self.z^-i)/ sigma_deriv(self.z^-i)
 
         return errors
 
@@ -204,10 +211,7 @@ class BCH:
         #poly = self.Ex(0)
         #for i in range(0,len(received)):
         #    poly += received[i] * self.x^i
-        print "decoding ..."
         s = self.Syndrome(received)
-        print "syndrome: ", ''.join(str(ss) for ss in s)
-        print "syndrome: ", ''.join(self.gf655362str(ss) for ss in s)
         if s == [self.E(0)] * len(s):
             return self.DecodeErrorFree(received)
         e = self.DecodeSyndrome(s)

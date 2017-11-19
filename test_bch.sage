@@ -6,7 +6,7 @@ def test_generator( seed ):
     rng = csprng()
     rng.seed(seed)
     m = 16
-    delta = 10 + (rng.generate_ulong() % 1000)
+    delta = 10 + (rng.generate_ulong() % 100)
     n = m*delta + 10 + (rng.generate_ulong() % 100)
 
     print "testing bch codec generation with n = %i and delta = %i ..." % (n, delta),
@@ -65,7 +65,6 @@ def test_correction( seed ):
     codec = BCH(m, delta, n);
 
     print "testing bch error correction with n = %i and delta = %i and consequently k = %i and with (but not consequently) number of errors %i ..." % (n, delta, codec.k, num_errors)
-    print "generator:", ''.join(str(c) for c in codec.generator.coefficients(sparse=False))
 
     msg = [(rng.generate_ulong()%2) for i in range(0, codec.k)]
 
@@ -99,12 +98,18 @@ def main( ):
     print "Running series of tests with randomness", hexlify(rng.generate(4)), "..."
 
     success = True
-    for i in range(0,0): 
+    for i in range(0,10): 
         success = (success and test_generator(rng.generate(8)))
-    for i in range(0,0): 
+        if success == False:
+            break
+    for i in range(0,10): 
         success = (success and test_encode(rng.generate(8)))
-    for i in range(0,1): 
+        if success == False:
+            break
+    for i in range(0,10): 
         success = (success and test_correction(rng.generate(8)))
+        if success == False:
+            break
     
     if success == True:
         print "success."

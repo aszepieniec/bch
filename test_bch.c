@@ -13,7 +13,7 @@ int test_generator( unsigned char * random )
 
     int n, delta;
 
-    delta = 10 + (csprng_generate_ulong(&rng) % 1000);
+    delta = 10 + (csprng_generate_ulong(&rng) % 100);
     n = 16*delta + 10 + (csprng_generate_ulong(&rng) % 100);
 
     printf("testing bch codec generation with n = %i and delta = %i ... ", n, delta);
@@ -84,7 +84,6 @@ int test_encode( unsigned char * random )
 
     msg_ = malloc((k+1+7)/8);
     equals = bch_decode_error_free(msg_, codec, cdwd);
-    printf(" decoded as ");
     for( i = 0 ; i < (k+1+7)/8 ; ++i )
     {
         equals &= (msg[i] == msg_[i]);
@@ -140,7 +139,6 @@ int test_correction( unsigned char * random )
     codec = bch_init(n, delta);
     k = codec.k;
     printf("testing bch error correction with n = %i and delta = %i and consequently k = %i and with (but not consequently) number of errors %i ... \n", n, delta, k, num_errors);
-    printf("\n");
 
     msg = malloc((k+1+7)/8);
     for( i = 0 ; i < (k+1+7)/8 ; ++i )
@@ -160,13 +158,11 @@ int test_correction( unsigned char * random )
     {
         printf("%i", (msg[i/8] & (1 << (i%8))) != 0);
     }
-    printf("\n");
     printf(" encoded as ");
     for( i = 0 ; i < n ; ++i )
     {
         printf("%i", (cdwd[i/8] & (1 << (i % 8))) != 0);
     }
-    printf("\n");
 
     printf(" adding errors in positions ");
     for( i = 0 ; i < num_errors ; ++i )
@@ -175,20 +171,19 @@ int test_correction( unsigned char * random )
         printf(" %i ", pos);
         cdwd[pos/8] ^= 1 << (pos % 8);
     }
-    printf("\n");
 
     msg_ = malloc((k+1+7)/8);
     equals = bch_decode(msg_, codec, cdwd);
-    printf(" decoded as ");
-    for( i = 0 ; i < (k+1+7)/8 ; ++i )
+    printf("decoded as ");
+    for( i = 0 ; i < (k+1+7)/8-1 ; ++i )
     {
         equals &= (msg[i] == msg_[i]);
     }
+    equals &= (((((msg[k/8] ^ msg_[k/8]) << (8 - (k%8)))) & 0xff) == 0);
     for( i = 0 ; i < k ; ++i )
     {
         printf("%i", (msg_[i/8] & (1 << (i%8))) != 0);
     }
-    printf("\n");
     if( equals == 1 )
     {
         printf(" success! \\o/\n");
@@ -227,17 +222,17 @@ int main( int argc, char ** argv )
     printf("Running series of tests with randomness %02x%02x%02x%02x ...\n", rr[0], rr[1], rr[2], rr[3]);
 
     success = 1;
-    for( i = 0 ; i < 0 ; ++i )
+    for( i = 0 ; i < 10 && success == 1 ; ++i )
     {
         csprng_generate(&rng, 8, seed);
         success &= test_generator(seed);
     }
-    for( i = 0 ; i < 0 ; ++i )
+    for( i = 0 ; i < 10 && success == 1 ; ++i )
     {
         csprng_generate(&rng, 8, seed);
         success &= test_encode(seed);
     }
-    for( i = 0 ; i < 1 ; ++i )
+    for( i = 0 ; i < 10 && success == 1 ; ++i )
     {
         csprng_generate(&rng, 8, seed);
         success &= test_correction(seed);

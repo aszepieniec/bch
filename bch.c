@@ -232,8 +232,6 @@ bch bch_init( unsigned int n, unsigned int delta )
     codec.generator = list[0];
     free(list);
 
-    printf("old gen = "); gf2x_print(acc); printf("\n");
-
     /* infer remaining parameters */
     codec.n = n;
     codec.delta = delta;
@@ -281,6 +279,10 @@ int bch_encode( unsigned char * codeword, bch codec, unsigned char * message )
     {
         codeword[i] = cdwd.data[i];
     }
+    for( ; i < (codec.n+1+7)/8 ; ++i )
+    {
+        codeword[i] = 0;
+    }
     gf2x_destroy(cdwd);
 
     return 1;
@@ -293,59 +295,73 @@ int bch_encode( unsigned char * codeword, bch codec, unsigned char * message )
  */
 int bch_interrupted_euclid( gf65536x * sigma, gf65536x * omega, gf65536x syndrome, gf65536x gcap )
 {
-    gf65536x s, old_s;
-    gf65536x t, old_t;
-    gf65536x r, old_r;
+    gf65536x s1, s2;
+    gf65536x t1, t2;
+    gf65536x r1, r2;
     gf65536x quotient, remainder;
     gf65536x temp;
     gf65536x temp2;
     unsigned int lc;
 
-    s = gf65536x_init(0);
-    old_s = gf65536x_init(0);
-    t = gf65536x_init(0);
-    old_t = gf65536x_init(0);
-    r = gf65536x_init(0);
-    old_r = gf65536x_init(0);
+    //printf("inside interrupted euclidean procedure ...\n");
+    //printf("S: "); gf65536x_print(syndrome); printf("\n");
+    //printf("g: "); gf65536x_print(gcap); printf("\n");
+
+    s1 = gf65536x_init(0);
+    s2 = gf65536x_init(0);
+    t1 = gf65536x_init(0);
+    t2 = gf65536x_init(0);
+    r1 = gf65536x_init(0);
+    r2 = gf65536x_init(0);
     quotient = gf65536x_init(0);
     remainder = gf65536x_init(0);
     temp = gf65536x_init(0);
     temp2 = gf65536x_init(0);
 
-    gf65536x_zero(&s);
-    gf65536x_one(&old_s);
-    gf65536x_one(&t);
-    gf65536x_zero(&old_t);
-    gf65536x_copy(&r, gcap);
-    gf65536x_copy(&old_r, syndrome);
+    gf65536x_zero(&s1);
+    gf65536x_one(&s2);
+    gf65536x_one(&t1);
+    gf65536x_zero(&t2);
+    gf65536x_copy(&r1, gcap);
+    gf65536x_copy(&r2, syndrome);
 
-    while( old_r.degree >= old_t.degree )
+    while( r2.degree >= t2.degree )
     {
-        gf65536x_divide(&quotient, &remainder, old_r, r);
+        //printf("r1: "); gf65536x_print(r1); printf("\n");
+        //printf("r2: "); gf65536x_print(r2); printf("\n");
+        //printf("t1: "); gf65536x_print(t1); printf("\n");
+        //printf("t2: "); gf65536x_print(t2); printf("\n");
+        //printf("s1: "); gf65536x_print(s1); printf("\n");
+        //printf("s2: "); gf65536x_print(s2); printf("\n");
+        gf65536x_divide(&quotient, &remainder, r1, r2);
+        //printf("quotient: "); gf65536x_print(quotient); printf("\n");
+        //printf("remainder: "); gf65536x_print(remainder); printf("\n");
+        //getchar();
 
-        gf65536x_copy(&old_r, r);
-        gf65536x_copy(&r, remainder);
 
-        gf65536x_multiply(&temp, quotient, s);
-        gf65536x_add(&temp, temp, old_s);
-        gf65536x_copy(&old_s, s);
-        gf65536x_copy(&s, temp);
+        gf65536x_copy(&r1, r2);
+        gf65536x_copy(&r2, remainder);
 
-        gf65536x_multiply(&temp, quotient, t);
-        gf65536x_add(&temp, temp, old_t);
-        gf65536x_copy(&old_t, t);
-        gf65536x_copy(&t, temp);
+        gf65536x_multiply(&temp, quotient, s2);
+        gf65536x_add(&temp, temp, s1);
+        gf65536x_copy(&s1, s2);
+        gf65536x_copy(&s2, temp);
+
+        gf65536x_multiply(&temp, quotient, t2);
+        gf65536x_add(&temp, temp, t1);
+        gf65536x_copy(&t1, t2);
+        gf65536x_copy(&t2, temp);
     }
 
-    gf65536x_copy(sigma, s);
-    gf65536x_copy(omega, r);
+    gf65536x_copy(sigma, s1);
+    gf65536x_copy(omega, r1);
 
-    gf65536x_destroy(s);
-    gf65536x_destroy(old_s);
-    gf65536x_destroy(t);
-    gf65536x_destroy(old_t);
-    gf65536x_destroy(r);
-    gf65536x_destroy(old_r);
+    gf65536x_destroy(s1);
+    gf65536x_destroy(s2);
+    gf65536x_destroy(t1);
+    gf65536x_destroy(t2);
+    gf65536x_destroy(r1);
+    gf65536x_destroy(r2);
     gf65536x_destroy(quotient);
     gf65536x_destroy(remainder);
     gf65536x_destroy(temp);
@@ -366,11 +382,8 @@ gf65536x bch_syndrome( bch codec, unsigned char * word )
     unsigned int ev, z, zi, zij;
     int i, j;
 
-    printf("delta: %i\n", codec.delta);
-
     z = BCH_FIELD_GEN;
     syndrome = gf65536x_init(codec.delta-2);
-    printf("syndrome degree: %i\n", syndrome.degree);
     zi = 1;
     for( i = 0 ; i < codec.delta-1 ; ++i )
     {
@@ -386,18 +399,9 @@ gf65536x bch_syndrome( bch codec, unsigned char * word )
             }
             zij = gf65536_multiply(zij, zi);
         }
-        if( i < 9 )
-        {
-            for( j = 0 ; j < 16 ; ++j )
-            {
-                printf("%i", (ev & (1 << j)) != 0);
-            }
-            printf("\n");
-        }
         syndrome.data[2*i] = ev & 0xff;
         syndrome.data[2*i+1] = (ev >> 8) & 0xff;
     }
-    printf("syndrome degree: %i\n", syndrome.degree);
 
     return syndrome;
 }
@@ -415,37 +419,41 @@ int bch_decode_syndrome( unsigned char * errors, bch codec, gf65536x syndrome )
     gf65536x g;
     gf65536x sigma, omega;
     int i, j;
-    unsigned int zinv, zmini;
-    unsigned int ev;
+    unsigned int zinv, zmini, zminij;
+    unsigned int ev1, ev2, coeff;
 
     g = gf65536x_init(0);
     gf65536x_one(&g);
-    gf65536x_multiply_constant_shift(&g, g, 1, codec.delta-1);
+    gf65536x_multiply_constant_shift(&g, g, 1, codec.delta);
 
     sigma = gf65536x_init(0);
     omega = gf65536x_init(0);
     bch_interrupted_euclid(&sigma, &omega, syndrome, g);
+    gf65536x_destroy(g);
+
 
     zinv = gf65536_inverse(BCH_FIELD_GEN);
     zmini = 1;
     for( i = 0 ; i < codec.n ; ++i )
     {
-        for( j = 0 ; j < syndrome.degree + 1 ; ++j )
+        ev1 = 0;
+        zminij = 1;
+        for( j = 0 ; j < sigma.degree + 1 ; ++j )
         {
-            ev ^= gf65536_multiply((syndrome.data[2*i+1] << 8) ^ syndrome.data[2*i], zmini);
+            coeff = ((unsigned int)(sigma.data[2*j+1]) << 8) ^ sigma.data[2*j];
+            ev1 ^= gf65536_multiply(coeff, zminij);
+            zminij = gf65536_multiply(zmini, zminij);
         }
-        if( gf65536x_eval(sigma, zmini) == 0 )
+        ev2 = gf65536x_eval(sigma, zmini);
+        if( ev2 == 0 )
         {
-            printf("found error in position %i\n", i);
             errors[i/8] ^= (1 << (i%8));
-        }
-        else if( i == 23 )
-        {
-            printf("eval at 23 is %02x%02x\n", gf65536x_eval(sigma, zmini) & 0xff, (gf65536x_eval(sigma, zmini) >> 8) & 0xff);
-            printf("but should be %02x%02x\n", ev & 0xff, (ev >> 8) & 0xff);
         }
         zmini = gf65536_multiply(zmini, zinv);
     }
+
+    gf65536x_destroy(sigma);
+    gf65536x_destroy(omega);
 
     return 1;
 }
@@ -471,9 +479,13 @@ int bch_decode_error_free( unsigned char * message, bch codec, unsigned char * c
     gf2x_divide(&quo, &rem, cdwd, codec.generator);
     success = gf2x_is_zero(rem);
 
-    for( i = 0 ; i < (codec.k+1+7)/8 ; ++i )
+    for( i = 0 ; i < (quo.degree+1+7)/8 ; ++i )
     {
         message[i] = quo.data[i];
+    }
+    for( ; i < (codec.k+1+7)/8 ; ++i )
+    {
+        message[i] = 0;
     }
     gf2x_destroy(quo);
     gf2x_destroy(rem);
@@ -494,7 +506,6 @@ int bch_decode( unsigned char * message, bch codec, unsigned char * codeword )
     int success;
     int i;
 
-    printf("decoding ...\n");
 
     syndrome = bch_syndrome(codec, codeword);
     if( gf65536x_is_zero(syndrome) == 1 )
@@ -503,27 +514,23 @@ int bch_decode( unsigned char * message, bch codec, unsigned char * codeword )
         return bch_decode_error_free(message, codec, codeword);
     }
 
-    printf("got syndrome ...\n");
-    printf("syndrome: "); gf65536x_print(syndrome); printf("\n");
-
     errata = malloc((codec.n+1+7)/8);
     for( i = 0 ; i < (codec.n+1+7)/8 ; ++i )
     {
         errata[i] = 0;
     }
     success = bch_decode_syndrome(errata, codec, syndrome);
-    printf(" got errors ...\n");
 
     cdwd = malloc((codec.n+1+7)/8);
     for( i = 0 ; i < (codec.n+1+7)/8 ; ++i )
     {
         cdwd[i] = codeword[i] ^ errata[i];
     }
-    printf(" corrected codeword.\n");
 
     bch_decode_error_free(message, codec, cdwd);
-
-    printf("got decoded message.\n");
+    
+    free(errata);
+    free(cdwd);
     gf65536x_destroy(syndrome);
     return success;
 }
