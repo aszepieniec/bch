@@ -64,7 +64,8 @@ def test_correction( seed ):
 
     codec = BCH(m, delta, n);
 
-    print "testing bch error correction with n = %i and delta = %i and consequently k = %i and with (but not consequently) number of errors %i ..." % (n, delta, codec.k, num_errors), 
+    print "testing bch error correction with n = %i and delta = %i and consequently k = %i and with (but not consequently) number of errors %i ..." % (n, delta, codec.k, num_errors)
+    print "generator:", ''.join(str(c) for c in codec.generator.coefficients(sparse=False))
 
     msg = [(rng.generate_ulong()%2) for i in range(0, codec.k)]
 

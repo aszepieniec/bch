@@ -144,6 +144,8 @@ class BCH:
             zi = self.z^(i)
             for j in range(0,min(self.n,len(word))):
                 ev += self.E(word[j]) * zi^j
+            if i < 10:
+                print ''.join(str(c) for c in self.Coefficients(ev))
             s[i-1] = ev
 
         return s
@@ -169,6 +171,7 @@ class BCH:
         num_errors = 0
         for i in range(0, self.n):
             if sigma(self.z^(-i)) == 0:
+                print "found error in position", i
                 errors[i] = self.F(1)
             #    errors[i] = omega(self.z^-i)/ sigma_deriv(self.z^-i)a
 
@@ -184,11 +187,27 @@ class BCH:
             coeffs[i] = quo.coefficients(sparse=False)[i]
         return coeffs
 
+    def gf655362str( self, e ):
+        coeffs = self.Coefficients(e)
+        integer = 0
+        for i in range(0, len(coeffs)):
+            integer += 2^i * ZZ(coeffs[i])
+        h = hex(integer)
+        while len(h) != 4:
+            h = '0' + h
+        return h
+
+    def gf65536x2str( self, p ):
+        return ''.join(self.gf655362str(c) for c in p.coefficients(sparse=False))
+
     def Decode( self, received ):
         #poly = self.Ex(0)
         #for i in range(0,len(received)):
         #    poly += received[i] * self.x^i
+        print "decoding ..."
         s = self.Syndrome(received)
+        print "syndrome: ", ''.join(str(ss) for ss in s)
+        print "syndrome: ", ''.join(self.gf655362str(ss) for ss in s)
         if s == [self.E(0)] * len(s):
             return self.DecodeErrorFree(received)
         e = self.DecodeSyndrome(s)

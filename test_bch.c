@@ -139,7 +139,8 @@ int test_correction( unsigned char * random )
 
     codec = bch_init(n, delta);
     k = codec.k;
-    printf("testing bch error correction with n = %i and delta = %i and consequently k = %i and with (but not consequently) number of errors %i ... ", n, delta, k, num_errors);
+    printf("testing bch error correction with n = %i and delta = %i and consequently k = %i and with (but not consequently) number of errors %i ... \n", n, delta, k, num_errors);
+    printf("\n");
 
     msg = malloc((k+1+7)/8);
     for( i = 0 ; i < (k+1+7)/8 ; ++i )
@@ -159,11 +160,13 @@ int test_correction( unsigned char * random )
     {
         printf("%i", (msg[i/8] & (1 << (i%8))) != 0);
     }
+    printf("\n");
     printf(" encoded as ");
     for( i = 0 ; i < n ; ++i )
     {
         printf("%i", (cdwd[i/8] & (1 << (i % 8))) != 0);
     }
+    printf("\n");
 
     printf(" adding errors in positions ");
     for( i = 0 ; i < num_errors ; ++i )
@@ -172,10 +175,11 @@ int test_correction( unsigned char * random )
         printf(" %i ", pos);
         cdwd[pos/8] ^= 1 << (pos % 8);
     }
+    printf("\n");
 
     msg_ = malloc((k+1+7)/8);
     equals = bch_decode(msg_, codec, cdwd);
-    printf("decoded as ");
+    printf(" decoded as ");
     for( i = 0 ; i < (k+1+7)/8 ; ++i )
     {
         equals &= (msg[i] == msg_[i]);
@@ -184,6 +188,7 @@ int test_correction( unsigned char * random )
     {
         printf("%i", (msg_[i/8] & (1 << (i%8))) != 0);
     }
+    printf("\n");
     if( equals == 1 )
     {
         printf(" success! \\o/\n");
