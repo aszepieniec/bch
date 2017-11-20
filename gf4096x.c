@@ -134,28 +134,30 @@ int gf4096x_destroy( gf4096x p )
 int gf4096x_add( gf4096x* dest, gf4096x lhs, gf4096x rhs )
 {
     int i;
-    unsigned char * data;
+    gf4096x res;
+
     if( rhs.degree > lhs.degree )
     {
         return gf4096x_add(dest, rhs, lhs);
     }
 
-    data = malloc(2*lhs.degree+2);
+    res = gf4096x_init(lhs.degree);
 
     for( i = 0 ; i < 2 + 2*rhs.degree ; ++i )
     {
-        data[i] = lhs.data[i] ^ rhs.data[i];
+        res.data[i] = lhs.data[i] ^ rhs.data[i];
     }
+    
     for( ; i < 2 + 2*lhs.degree ; ++i )
     {
-        data[i] = lhs.data[i];
+        res.data[i] = lhs.data[i];
     }
 
     free(dest->data);
     dest->degree = lhs.degree;
-    dest->data = data;
+    dest->data = res.data;
 
-    while( data[2*dest->degree] == 0 && (data[2*dest->degree+1] & 0xf) == 0 && dest->degree > 0 )
+    while( res.data[2*dest->degree] == 0 && (res.data[2*dest->degree+1] & 0xf) == 0 && dest->degree > 0 )
     {
         dest->degree -= 1;
     }
@@ -185,10 +187,10 @@ int gf4096x_multiply( gf4096x* dest, gf4096x lhs, gf4096x rhs )
     product = 0;
     for( i = 0 ; i < 1 + lhs.degree ; ++i )
     {
+        left = lhs.data[2*i] | ((lhs.data[2*i + 1] & 0xf) << 8);
         for( j = 0 ; j < 1 + rhs.degree ; ++j )
         {
-            left = lhs.data[2*i] | (lhs.data[2*i + 1] << 8);
-            right = rhs.data[2*j] | (rhs.data[2*j + 1] << 8);
+            right = rhs.data[2*j] | ((rhs.data[2*j + 1] & 0xf) << 8);
             product = gf4096_multiply(left, right);
             data[2*(i+j)] ^= product & 0xff;
             data[2*(i+j) + 1] ^= (product >> 8) & 0xf;
@@ -234,9 +236,10 @@ int gf4096x_is_zero( gf4096x p )
     int zero;
     int i;
     zero = 1;
-    for( i = 0 ; i < 2 + 2*p.degree ; ++i )
+    for( i = 0 ; i < 1 + p.degree ; ++i )
     {
-        zero &= (p.data[i] == 0);
+        zero &= (p.data[2*i] == 0);
+        zero &= ((p.data[2*i+1] & 0xf) == 0);
     }
     return zero;
 }
@@ -268,15 +271,11 @@ int gf4096x_multiply_constant_shift( gf4096x* dest, gf4096x poly, unsigned int c
         product = gf4096_multiply(lhs, constant);
         data[2*i] = product & 0xff;
         data[2*i + 1] = (product >> 8) & 0xf;
-        //data[i] = gf4096_multiply(poly.data[i-shift], constant);
     }
 
     free(dest->data);
     dest->data = data;
     dest->degree = degree;
-
-    printf("output of shift by %i and multiply by constant:\n", shift);
-    gf4096x_print(*dest); printf("\n");
 
     return 1;
 }
@@ -363,40 +362,18 @@ int gf4096x_divide( gf4096x* quo, gf4096x* rem, gf4096x num, gf4096x divisor )
         }
 
         r = remainder.data[2*remainder.degree] | ((remainder.data[2*remainder.degree + 1] & 0xf) << 8);
-        printf("remainder leading coeff: %03x\n", r);
         compl = gf4096_multiply(r, inv);
-        printf("r * inv = %03x * %03x = %03x\n", r, inv, compl);
 
         gf4096x_multiply_constant_shift(&poly, divisor, compl, i);
 
         quotient.data[2*i] = compl & 0xff;
         quotient.data[2*i+1] = (compl >> 8) & 0xf;
-        //quotient.data[2*i] = compl & 0xff;
-        //quotient.data[2*i+1] = (compl >> 8) & 0xff
 
-        printf("subtracting poly from remainder where\n");
-        printf("poly: "); gf4096x_print(poly); printf("\n");
-        printf("rema: "); gf4096x_print(remainder); printf("\n");
-    
         gf4096x_add(&remainder, remainder, poly);
 
         temp = gf4096x_init(0);
         gf4096x_multiply(&temp, quotient, divisor);
         gf4096x_add(&temp, temp, remainder);
-        if( gf4096x_equals( temp, num) == 0 )
-        {
-            printf("intermediately numerator =/= quotient * divisor + remainder.\n");
-            printf("num: "); gf4096x_print(num); printf("\n");
-            printf("sum: "); gf4096x_print(temp); printf("\n");
-            printf("quotient: "); gf4096x_print(quotient); printf("\n");
-            printf("remainder: "); gf4096x_print(remainder); printf("\n");
-            gf4096x_multiply(&temp, quotient, divisor);
-            printf("quo*div: "); gf4096x_print(temp); printf("\n");
-            gf4096x_add(&temp, temp, remainder);
-            gf4096x_add(&temp, temp, num);
-            printf("dif: "); gf4096x_print(temp); printf(" (%i)", temp.degree); printf("\n");
-            getchar();
-        }
         gf4096x_destroy(temp);
 
     }
@@ -448,7 +425,7 @@ int gf4096x_xgcd( gf4096x* a, gf4096x* b, gf4096x* g, gf4096x x, gf4096x y )
     while( gf4096x_is_zero(r) == 0 ) /* while r =/= 0 */
     {
         gf4096x_divide(&quotient, &remainder, old_r, r);
-
+    
         gf4096x_copy(&old_r, r);
         gf4096x_copy(&r, remainder);
 
