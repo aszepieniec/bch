@@ -40,7 +40,7 @@ gf2x bch_minpoly( unsigned int elm )
         {
             data[i*width + j] = 0;
         }
-        raised = gf65536_multiply(raised, elm);
+        raised = gf4096_multiply(raised, elm);
     }
 
     if( 0 == 1 )
@@ -182,7 +182,7 @@ bch bch_init( unsigned int n, unsigned int delta )
     elm = 1;
     for( i = 0 ; i < delta-1 ; ++i )
     {
-        elm = gf65536_multiply(elm, BCH_FIELD_GEN);
+        elm = gf4096_multiply(elm, BCH_FIELD_GEN);
         list[i] = bch_minpoly(elm);
         gf2x_lcm(&acc, acc, list[i]);
     }
@@ -293,79 +293,65 @@ int bch_encode( unsigned char * codeword, bch codec, unsigned char * message )
  * Use the interrupted euclidean procedure to get the error locator
  * polynomial.
  */
-int bch_interrupted_euclid( gf65536x * sigma, gf65536x * omega, gf65536x syndrome, gf65536x gcap )
+int bch_interrupted_euclid( gf4096x * sigma, gf4096x * omega, gf4096x syndrome, gf4096x gcap )
 {
-    gf65536x s1, s2;
-    gf65536x t1, t2;
-    gf65536x r1, r2;
-    gf65536x quotient, remainder;
-    gf65536x temp;
-    gf65536x temp2;
+    gf4096x s1, s2;
+    gf4096x t1, t2;
+    gf4096x r1, r2;
+    gf4096x quotient, remainder;
+    gf4096x temp;
+    gf4096x temp2;
     unsigned int lc;
 
-    //printf("inside interrupted euclidean procedure ...\n");
-    //printf("S: "); gf65536x_print(syndrome); printf("\n");
-    //printf("g: "); gf65536x_print(gcap); printf("\n");
+    s1 = gf4096x_init(0);
+    s2 = gf4096x_init(0);
+    t1 = gf4096x_init(0);
+    t2 = gf4096x_init(0);
+    r1 = gf4096x_init(0);
+    r2 = gf4096x_init(0);
+    quotient = gf4096x_init(0);
+    remainder = gf4096x_init(0);
+    temp = gf4096x_init(0);
+    temp2 = gf4096x_init(0);
 
-    s1 = gf65536x_init(0);
-    s2 = gf65536x_init(0);
-    t1 = gf65536x_init(0);
-    t2 = gf65536x_init(0);
-    r1 = gf65536x_init(0);
-    r2 = gf65536x_init(0);
-    quotient = gf65536x_init(0);
-    remainder = gf65536x_init(0);
-    temp = gf65536x_init(0);
-    temp2 = gf65536x_init(0);
-
-    gf65536x_zero(&s1);
-    gf65536x_one(&s2);
-    gf65536x_one(&t1);
-    gf65536x_zero(&t2);
-    gf65536x_copy(&r1, gcap);
-    gf65536x_copy(&r2, syndrome);
+    gf4096x_zero(&s1);
+    gf4096x_one(&s2);
+    gf4096x_one(&t1);
+    gf4096x_zero(&t2);
+    gf4096x_copy(&r1, gcap);
+    gf4096x_copy(&r2, syndrome);
 
     while( r2.degree >= t2.degree )
     {
-        //printf("r1: "); gf65536x_print(r1); printf("\n");
-        //printf("r2: "); gf65536x_print(r2); printf("\n");
-        //printf("t1: "); gf65536x_print(t1); printf("\n");
-        //printf("t2: "); gf65536x_print(t2); printf("\n");
-        //printf("s1: "); gf65536x_print(s1); printf("\n");
-        //printf("s2: "); gf65536x_print(s2); printf("\n");
-        gf65536x_divide(&quotient, &remainder, r1, r2);
-        //printf("quotient: "); gf65536x_print(quotient); printf("\n");
-        //printf("remainder: "); gf65536x_print(remainder); printf("\n");
-        //getchar();
+        gf4096x_divide(&quotient, &remainder, r1, r2);
 
+        gf4096x_copy(&r1, r2);
+        gf4096x_copy(&r2, remainder);
 
-        gf65536x_copy(&r1, r2);
-        gf65536x_copy(&r2, remainder);
+        gf4096x_multiply(&temp, quotient, s2);
+        gf4096x_add(&temp, temp, s1);
+        gf4096x_copy(&s1, s2);
+        gf4096x_copy(&s2, temp);
 
-        gf65536x_multiply(&temp, quotient, s2);
-        gf65536x_add(&temp, temp, s1);
-        gf65536x_copy(&s1, s2);
-        gf65536x_copy(&s2, temp);
-
-        gf65536x_multiply(&temp, quotient, t2);
-        gf65536x_add(&temp, temp, t1);
-        gf65536x_copy(&t1, t2);
-        gf65536x_copy(&t2, temp);
+        gf4096x_multiply(&temp, quotient, t2);
+        gf4096x_add(&temp, temp, t1);
+        gf4096x_copy(&t1, t2);
+        gf4096x_copy(&t2, temp);
     }
 
-    gf65536x_copy(sigma, s1);
-    gf65536x_copy(omega, r1);
+    gf4096x_copy(sigma, s1);
+    gf4096x_copy(omega, r1);
 
-    gf65536x_destroy(s1);
-    gf65536x_destroy(s2);
-    gf65536x_destroy(t1);
-    gf65536x_destroy(t2);
-    gf65536x_destroy(r1);
-    gf65536x_destroy(r2);
-    gf65536x_destroy(quotient);
-    gf65536x_destroy(remainder);
-    gf65536x_destroy(temp);
-    gf65536x_destroy(temp2);
+    gf4096x_destroy(s1);
+    gf4096x_destroy(s2);
+    gf4096x_destroy(t1);
+    gf4096x_destroy(t2);
+    gf4096x_destroy(r1);
+    gf4096x_destroy(r2);
+    gf4096x_destroy(quotient);
+    gf4096x_destroy(remainder);
+    gf4096x_destroy(temp);
+    gf4096x_destroy(temp2);
 
     return 1;
 }
@@ -373,31 +359,30 @@ int bch_interrupted_euclid( gf65536x * sigma, gf65536x * omega, gf65536x syndrom
 /**
  * bch_syndrome
  * Compute the syndrome of the received noisy codeword.
- * This function returns a new gf65536x object; please don't forget
+ * This function returns a new gf4096x object; please don't forget
  * to destroy it.
  */
-gf65536x bch_syndrome( bch codec, unsigned char * word )
+gf4096x bch_syndrome( bch codec, unsigned char * word )
 {
-    gf65536x syndrome;
+    gf4096x syndrome;
     unsigned int ev, z, zi, zij;
     int i, j;
 
     z = BCH_FIELD_GEN;
-    syndrome = gf65536x_init(codec.delta-2);
+    syndrome = gf4096x_init(codec.delta-2);
     zi = 1;
     for( i = 0 ; i < codec.delta-1 ; ++i )
     {
         ev = 0;
-        zi = gf65536_multiply(zi, z);
+        zi = gf4096_multiply(zi, z);
         zij = 1;
         for( j = 0 ; j < codec.n ; ++j )
         {
             if( (word[j/8] & (1 << (j%8))) != 0 )
             {
                 ev ^= zij;
-                //ev ^= gf65536_exp(zi, j);
             }
-            zij = gf65536_multiply(zij, zi);
+            zij = gf4096_multiply(zij, zi);
         }
         syndrome.data[2*i] = ev & 0xff;
         syndrome.data[2*i+1] = (ev >> 8) & 0xff;
@@ -414,25 +399,25 @@ gf65536x bch_syndrome( bch codec, unsigned char * word )
  * correction by giving it the noisy codeword. In either case, the 
  * buffer should be large enough to hold at least n bits.
  */
-int bch_decode_syndrome( unsigned char * errors, bch codec, gf65536x syndrome )
+int bch_decode_syndrome( unsigned char * errors, bch codec, gf4096x syndrome )
 {
-    gf65536x g;
-    gf65536x sigma, omega;
+    gf4096x g;
+    gf4096x sigma, omega;
     int i, j;
     unsigned int zinv, zmini, zminij;
     unsigned int ev1, ev2, coeff;
 
-    g = gf65536x_init(0);
-    gf65536x_one(&g);
-    gf65536x_multiply_constant_shift(&g, g, 1, codec.delta);
+    g = gf4096x_init(0);
+    gf4096x_one(&g);
+    gf4096x_multiply_constant_shift(&g, g, 1, codec.delta);
 
-    sigma = gf65536x_init(0);
-    omega = gf65536x_init(0);
+    sigma = gf4096x_init(0);
+    omega = gf4096x_init(0);
     bch_interrupted_euclid(&sigma, &omega, syndrome, g);
-    gf65536x_destroy(g);
+    gf4096x_destroy(g);
 
 
-    zinv = gf65536_inverse(BCH_FIELD_GEN);
+    zinv = gf4096_inverse(BCH_FIELD_GEN);
     zmini = 1;
     for( i = 0 ; i < codec.n ; ++i )
     {
@@ -441,19 +426,19 @@ int bch_decode_syndrome( unsigned char * errors, bch codec, gf65536x syndrome )
         for( j = 0 ; j < sigma.degree + 1 ; ++j )
         {
             coeff = ((unsigned int)(sigma.data[2*j+1]) << 8) ^ sigma.data[2*j];
-            ev1 ^= gf65536_multiply(coeff, zminij);
-            zminij = gf65536_multiply(zmini, zminij);
+            ev1 ^= gf4096_multiply(coeff, zminij);
+            zminij = gf4096_multiply(zmini, zminij);
         }
-        ev2 = gf65536x_eval(sigma, zmini);
+        ev2 = gf4096x_eval(sigma, zmini);
         if( ev2 == 0 )
         {
             errors[i/8] ^= (1 << (i%8));
         }
-        zmini = gf65536_multiply(zmini, zinv);
+        zmini = gf4096_multiply(zmini, zinv);
     }
 
-    gf65536x_destroy(sigma);
-    gf65536x_destroy(omega);
+    gf4096x_destroy(sigma);
+    gf4096x_destroy(omega);
 
     return 1;
 }
@@ -500,7 +485,7 @@ int bch_decode_error_free( unsigned char * message, bch codec, unsigned char * c
  */
 int bch_decode( unsigned char * message, bch codec, unsigned char * codeword )
 {
-    gf65536x syndrome;
+    gf4096x syndrome;
     unsigned char * errata;
     unsigned char * cdwd;
     int success;
@@ -508,9 +493,9 @@ int bch_decode( unsigned char * message, bch codec, unsigned char * codeword )
 
 
     syndrome = bch_syndrome(codec, codeword);
-    if( gf65536x_is_zero(syndrome) == 1 )
+    if( gf4096x_is_zero(syndrome) == 1 )
     {
-        gf65536x_destroy(syndrome);
+        gf4096x_destroy(syndrome);
         return bch_decode_error_free(message, codec, codeword);
     }
 
@@ -531,7 +516,7 @@ int bch_decode( unsigned char * message, bch codec, unsigned char * codeword )
     
     free(errata);
     free(cdwd);
-    gf65536x_destroy(syndrome);
+    gf4096x_destroy(syndrome);
     return success;
 }
 

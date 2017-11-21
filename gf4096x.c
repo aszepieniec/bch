@@ -493,8 +493,6 @@ unsigned int gf4096x_eval( gf4096x polynomial, unsigned int point )
         xi = gf4096_multiply(xi, point);
     }
 
-//    printf("evaluating polynomial "); gf4096x_print(polynomial); printf(" int point %02x; result: %02x\n", point, acc);
-
     return acc;
 }
 

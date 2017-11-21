@@ -7,14 +7,13 @@ int test_generator( unsigned char * random )
 {
     bch codec;
     csprng rng;
+    int n, delta;
 
     csprng_init(&rng);
     csprng_seed(&rng, 8, random);
 
-    int n, delta;
-
     delta = 10 + (csprng_generate_ulong(&rng) % 100);
-    n = 16*delta + 10 + (csprng_generate_ulong(&rng) % 100);
+    n = 12*delta + 10 + (csprng_generate_ulong(&rng) % 100);
 
     printf("testing bch codec generation with n = %i and delta = %i ... ", n, delta);
 
@@ -51,7 +50,7 @@ int test_encode( unsigned char * random )
     csprng_seed(&rng, 8, random);
 
     delta = 10 + (csprng_generate_ulong(&rng) % 100);
-    n = 16*delta + 10 + (csprng_generate_ulong(&rng) % 100);
+    n = 12*delta + 10 + (csprng_generate_ulong(&rng) % 100);
 
 
     codec = bch_init(n, delta);
@@ -83,6 +82,7 @@ int test_encode( unsigned char * random )
     }
 
     msg_ = malloc((k+1+7)/8);
+    printf(" decoded as ");
     equals = bch_decode_error_free(msg_, codec, cdwd);
     for( i = 0 ; i < (k+1+7)/8 ; ++i )
     {
@@ -125,14 +125,8 @@ int test_correction( unsigned char * random )
     csprng_init(&rng);
     csprng_seed(&rng, 8, random);
 
-    //for( i = 0 ; i < 8 ; ++i )
-    //{
-    //    printf("%02x", random[i]);
-    //}
-    //printf("\n");
-
     delta = 10 + (csprng_generate_ulong(&rng) % 20);
-    n = 16*delta + 10 + (csprng_generate_ulong(&rng) % 50);
+    n = 12*delta + 10 + (csprng_generate_ulong(&rng) % 50);
     num_errors = (csprng_generate_ulong(&rng) % (1+(delta-1)/2));
 
 
