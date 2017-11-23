@@ -162,7 +162,7 @@ gf2x bch_minpoly( unsigned int elm )
 /**
  * bch_init
  * Create a BCH codec object, including generator polynomial and
- * parameters inferred from n and delta. (Subject to m=24).
+ * parameters inferred from n and delta. (Subject to m=12).
  */
 bch bch_init( unsigned int n, unsigned int delta )
 {
@@ -172,11 +172,8 @@ bch bch_init( unsigned int n, unsigned int delta )
     unsigned int list_size;
     bch codec;
     gf2x temp1, temp2, temp3, temp4;
-    gf2x acc;
 
     /* populate list */
-    acc = gf2x_init(0);
-    gf2x_one(&acc);
     list_size = 0;
     list = malloc(sizeof(gf2x)*delta);
     elm = 1;
@@ -184,7 +181,6 @@ bch bch_init( unsigned int n, unsigned int delta )
     {
         elm = gf4096_multiply(elm, BCH_FIELD_GEN);
         list[i] = bch_minpoly(elm);
-        gf2x_lcm(&acc, acc, list[i]);
     }
     list_size = delta-1;
 
@@ -238,7 +234,49 @@ bch bch_init( unsigned int n, unsigned int delta )
     codec.t = (delta-1)/2;
     codec.k = n - codec.generator.degree;
 
-    gf2x_destroy(acc);
+    return codec;
+}
+ 
+
+/**
+ * bch_init
+ * Create a BCH codec object, including generator polynomial and
+ * parameters inferred from k and n. (Subject to m=12). Optimize
+ * delta.
+ */
+bch bch_init_kn( unsigned int k, unsigned int n )
+{
+    int i, j;
+    unsigned int elm;
+    bch codec;
+    gf2x temp1, temp2, temp3, temp4;
+    gf2x multiple, minpoly;
+
+    /* get generator */
+    codec.generator = gf2x_init(0);
+    gf2x_one(&codec.generator);
+    multiple = gf2x_init(0);
+    elm = 1;
+    for( i = 1 ; i < n ; ++i )
+    {
+        elm = gf4096_multiply(elm, BCH_FIELD_GEN);
+        minpoly = bch_minpoly(elm);
+        gf2x_lcm(&multiple, minpoly, codec.generator);
+        gf2x_destroy(minpoly);
+        if( multiple.degree + k > n )
+        {
+            break;
+        }
+        gf2x_copy(&codec.generator, multiple);
+    }
+
+    /* infer remaining parameters */
+    codec.n = n;
+    codec.delta = i - 1;
+    codec.t = (codec.delta-1)/2;
+    codec.k = k;
+
+    gf2x_destroy(multiple);
 
     return codec;
 }

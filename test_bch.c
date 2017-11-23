@@ -196,6 +196,91 @@ int test_correction( unsigned char * random )
     return equals;
 }
 
+int test_kn( unsigned char * random )
+{
+    bch codec;
+
+    int n, delta, k, num_errors, pos;
+    unsigned char * msg;
+    unsigned char * cdwd;
+    unsigned char * msg_;
+    int equals;
+    int i;
+    csprng rng;
+
+    csprng_init(&rng);
+    csprng_seed(&rng, 8, random);
+
+    k = 10 + (csprng_generate_ulong(&rng) % 50);
+    n = k + 10 + (csprng_generate_ulong(&rng) % 1000);
+    codec = bch_init_kn(k, n);
+    delta = codec.delta;
+    num_errors = (csprng_generate_ulong(&rng) % (1+(delta-1)/2));
+    k = codec.k;
+    printf("testing bch codec (k,n)-generation with n = %i and k = %i and delta = %i and with (but not consequently) number of errors %i ... \n", n, k, delta, num_errors);
+
+    msg = malloc((k+1+7)/8);
+    for( i = 0 ; i < (k+1+7)/8 ; ++i )
+    {
+        msg[i] = 0;
+    }
+    for( i = 0 ; i < k ; ++i )
+    {
+        msg[i/8] ^= (csprng_generate_ulong(&rng)%2) << (i % 8);
+    }
+
+    cdwd = malloc((n+1+8)/8);
+    bch_encode(cdwd, codec, msg);
+
+    printf("message ");
+    for( i = 0 ; i < k ; ++i )
+    {
+        printf("%i", (msg[i/8] & (1 << (i%8))) != 0);
+    }
+    printf(" encoded as ");
+    for( i = 0 ; i < n ; ++i )
+    {
+        printf("%i", (cdwd[i/8] & (1 << (i % 8))) != 0);
+    }
+
+    printf(" adding errors in positions ");
+    for( i = 0 ; i < num_errors ; ++i )
+    {
+        pos = csprng_generate_ulong(&rng) % n;
+        printf(" %i ", pos);
+        cdwd[pos/8] ^= 1 << (pos % 8);
+    }
+
+    msg_ = malloc((k+1+7)/8);
+    equals = bch_decode(msg_, codec, cdwd);
+    printf("decoded as ");
+    for( i = 0 ; i < (k+1+7)/8-1 ; ++i )
+    {
+        equals &= (msg[i] == msg_[i]);
+    }
+    equals &= (((((msg[k/8] ^ msg_[k/8]) << (8 - (k%8)))) & 0xff) == 0);
+    for( i = 0 ; i < k ; ++i )
+    {
+        printf("%i", (msg_[i/8] & (1 << (i%8))) != 0);
+    }
+    if( equals == 1 )
+    {
+        printf(" success! \\o/\n");
+    }
+    else
+    {
+        printf(" failure! <o>\n");
+    }
+
+
+    free(msg);
+    free(msg_);
+    free(cdwd);
+    bch_destroy(codec);
+
+    return equals;
+}
+
 int main( int argc, char ** argv )
 {
 
@@ -230,6 +315,11 @@ int main( int argc, char ** argv )
     {
         csprng_generate(&rng, 8, seed);
         success &= test_correction(seed);
+    }
+    for( i = 0 ; i < 10 && success == 1 ; ++i )
+    {
+        csprng_generate(&rng, 8, seed);
+        success &= test_kn(seed);
     }
 
     if( success == 1 )

@@ -12,6 +12,7 @@ typedef struct
 
 #define BCH_FIELD_GEN 0x002
 bch bch_init( unsigned int n, unsigned int delta );
+bch bch_init_kn( unsigned int k, unsigned int n );
 int bch_destroy( bch codec );
 int bch_encode( unsigned char * codeword, bch codec, unsigned char * message );
 int bch_interrupted_euclid( gf4096x * sigma, gf4096x * omega, gf4096x syndrome, gf4096x gcap );
