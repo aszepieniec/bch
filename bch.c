@@ -306,7 +306,7 @@ int bch_encode( unsigned char * codeword, bch codec, unsigned char * message )
     gf2x msg;
     int i;
 
-    msg.degree = codec.k;
+    msg.degree = codec.k-1;
     msg.data = message;
     gf2x_trim(&msg);
 
