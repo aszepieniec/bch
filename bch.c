@@ -359,7 +359,8 @@ int bch_interrupted_euclid( gf4096x * sigma, gf4096x * omega, gf4096x syndrome, 
     gf4096x_copy(&r1, gcap);
     gf4096x_copy(&r2, syndrome);
 
-    while( r2.degree >= t2.degree )
+    /* while( r2.degree >= t2.degree ) */
+    while( r2.degree >= s2.degree )
     {
         gf4096x_divide(&quotient, &remainder, r1, r2);
 
@@ -377,8 +378,10 @@ int bch_interrupted_euclid( gf4096x * sigma, gf4096x * omega, gf4096x syndrome, 
         gf4096x_copy(&t2, temp);
     }
 
-    gf4096x_copy(sigma, s1);
-    gf4096x_copy(omega, r1);
+    /* gf4096x_copy(sigma, s1);
+    gf4096x_copy(omega, r1); */
+    gf4096x_copy(sigma, s2);
+    gf4096x_copy(omega, r2);
 
     gf4096x_destroy(s1);
     gf4096x_destroy(s2);

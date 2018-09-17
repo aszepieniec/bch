@@ -121,7 +121,8 @@ class BCH:
         r2 = S
         s1 = self.Ex(0)
         s2 = self.Ex(1)
-        while r2.degree() >= t2.degree():
+        #while r2.degree() >= t2.degree():
+	while r2.degree() >= s2.degree():
             #print "r1:", self.gf65536x2str(r1)
             #print "r2:", self.gf65536x2str(r2)
             #print "t1:", self.gf65536x2str(t1)
@@ -145,7 +146,8 @@ class BCH:
             r1 = r2
             r2 = temp - quo * r1
 
-        return (s1, r1)
+        #return (s1, r1)
+	return (s2, r2)
 
     def Syndrome( self, word ):
         s = [0]*(self.delta-1)
